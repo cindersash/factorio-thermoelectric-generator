@@ -1,0 +1,11 @@
+{
+  "name": "thermoelectric-generator",
+  "version": "1.0.0",
+  "title": "Thermoelectric Generator (Lava to Electricity)",
+  "author": "cindersofash",
+  "contact": "cinders.of.ash@gmail.com",
+  "factorio_version": "2.0",
+  "dependencies": ["base >= 2.0"],
+  "space_travel_required": true,
+  "description": "Adds a new building to turn lava into electricity without needing any other resources."
+}
