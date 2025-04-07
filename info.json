@@ -7,5 +7,5 @@
   "factorio_version": "2.0",
   "dependencies": ["base >= 2.0"],
   "space_travel_required": true,
-  "description": "Adds a new building to turn lava into electricity without needing any other resources."
+  "description": "Adds a new building to turn lava into electricity without needing any other resources like steam."
 }
