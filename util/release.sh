@@ -2,8 +2,10 @@
 set -euo pipefail
 
 # Usage: ./tag-release.sh [--force]
+
 FORCE=false
-if [ "$1" == "--force" ]; then
+ARG1=${1:-}
+if [ "$ARG1" == "--force" ]; then
   FORCE=true
 fi
 
