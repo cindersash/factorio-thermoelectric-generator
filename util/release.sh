@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Usage: ./tag-release.sh [--force]
 FORCE=false
@@ -21,6 +22,8 @@ if [ -z "$TAG_NAME" ]; then
   exit 1
 fi
 
+echo "Version: ${TAG_NAME}"
+
 # Check if tag exists locally
 TAG_EXISTS_LOCALLY=false
 if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
@@ -37,15 +40,6 @@ if git ls-remote --tags origin "$TAG_NAME" | grep -q "refs/tags/$TAG_NAME"; then
     echo "Error: Use --force to overwrite the existing remote tag."
     exit 1
   fi
-fi
-
-# Show commit log since last tag
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "$TAG_NAME" ]; then
-  echo "Changes since last tag ($LAST_TAG):"
-  git log "$LAST_TAG"..HEAD --oneline
-else
-  echo "No previous tags found or tag is same as last tag."
 fi
 
 # Final confirmation
@@ -66,6 +60,8 @@ if [ "$TAG_EXISTS_LOCALLY" = true ]; then
   if [ "$FORCE" = true ]; then
     echo "Deleting existing local tag $TAG_NAME..."
     git tag -d "$TAG_NAME"
+    echo "Creating tag $TAG_NAME..."
+    git tag "$TAG_NAME"
   fi
 else
   echo "Creating tag $TAG_NAME..."
