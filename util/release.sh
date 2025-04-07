@@ -1,6 +1,18 @@
 #!/bin/bash
 
-# Read the version string from info.json
+# Usage: ./tag-release.sh [--force]
+FORCE=false
+if [ "$1" == "--force" ]; then
+  FORCE=true
+fi
+
+# Ensure jq is installed
+if ! command -v jq &>/dev/null; then
+  echo "Error: 'jq' is not installed. Please install it to continue."
+  exit 1
+fi
+
+# Read version from info.json
 TAG_NAME=$(jq -r '.version' info.json)
 
 # Check if the version was found
@@ -9,35 +21,65 @@ if [ -z "$TAG_NAME" ]; then
   exit 1
 fi
 
-# Check if the tag exists locally
+# Check if tag exists locally
+TAG_EXISTS_LOCALLY=false
 if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-  echo "Tag $TAG_NAME exists locally."
+  TAG_EXISTS_LOCALLY=true
+  echo "Tag $TAG_NAME already exists locally."
+fi
+
+# Check if tag exists remotely
+TAG_EXISTS_REMOTELY=false
+if git ls-remote --tags origin "$TAG_NAME" | grep -q "refs/tags/$TAG_NAME"; then
+  TAG_EXISTS_REMOTELY=true
+  echo "Tag $TAG_NAME already exists remotely."
+  if [ "$FORCE" != true ]; then
+    echo "Error: Use --force to overwrite the existing remote tag."
+    exit 1
+  fi
+fi
+
+# Show commit log since last tag
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "$TAG_NAME" ]; then
+  echo "Changes since last tag ($LAST_TAG):"
+  git log "$LAST_TAG"..HEAD --oneline
 else
-  echo "Tag $TAG_NAME does not exist locally. Proceeding with tag creation."
+  echo "No previous tags found or tag is same as last tag."
 fi
 
-# Check if the tag exists remotely
-if git ls-remote --tags origin "$TAG_NAME" | grep -q "$TAG_NAME"; then
-  echo "Error: Tag $TAG_NAME already exists remotely."
-  exit 1
+# Final confirmation
+if [ "$FORCE" = true ]; then
+  echo "⚠️  WARNING: You are about to FORCE OVERWRITE tag $TAG_NAME (both locally and remotely) if it exists."
+else
+  echo "The version to be tagged and pushed is: $TAG_NAME"
 fi
 
-# Print the version and ask for confirmation
-echo "The version to be published is: $TAG_NAME"
-read -r -p "Do you want to proceed with this version? Type 'Y' to confirm: " CONFIRMATION
-
-# Check if the user confirmed
+read -r -p "Type 'Y' to confirm: " CONFIRMATION
 if [ "$CONFIRMATION" != "Y" ]; then
   echo "Operation cancelled."
   exit 0
 fi
 
-# Create the tag
-echo "Creating tag $TAG_NAME..."
-git tag "$TAG_NAME"
+# Delete local tag if it exists and --force was used
+if [ "$TAG_EXISTS_LOCALLY" = true ]; then
+  if [ "$FORCE" = true ]; then
+    echo "Deleting existing local tag $TAG_NAME..."
+    git tag -d "$TAG_NAME"
+  fi
+else
+  echo "Creating tag $TAG_NAME..."
+  git tag "$TAG_NAME"
+fi
 
-# Push the tag to the remote repository
-echo "Pushing tag $TAG_NAME to origin..."
-git push origin "$TAG_NAME"
+# Push the tag
+if [ "$FORCE" = true ] && [ "$TAG_EXISTS_REMOTELY" = true ]; then
+  echo "Force pushing tag $TAG_NAME to origin..."
+  git push origin ":refs/tags/$TAG_NAME"  # Delete remote tag first
+  git push origin "$TAG_NAME"
+else
+  echo "Pushing tag $TAG_NAME to origin..."
+  git push origin "$TAG_NAME"
+fi
 
-echo "Tag $TAG_NAME pushed successfully!"
+echo "✅ Tag $TAG_NAME pushed successfully!"
